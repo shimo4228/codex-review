@@ -1,0 +1,28 @@
+# codex-review
+
+> A Claude Code skill (MIT) that adds one cross-model decorrelation seam to a code review chain: a thin, read-only wrapper around the OpenAI Codex CLI (`codex review`) so a different model family reviews a diff and catches blind spots a same-model reviewer shares with the author.
+
+## Core documentation
+
+- [llms-full.txt](llms-full.txt): self-contained Q&A reference for AI agents (Project Facts, question-form H2 sections)
+- [README.md](README.md): human-facing narrative (install, invocation table, failure modes)
+- [SKILL.md](skills/codex-review/SKILL.md): full skill specification — scoped vs prompt-driven modes, read-only flag allowlist, fold-don't-dump handling of Codex output
+- [codex-review.sh](skills/codex-review/codex-review.sh): the wrapper script itself
+- [test-codex-review.sh](skills/codex-review/test-codex-review.sh): script test suite
+
+## Architecture
+
+- One seam, not a general orchestrator: same-model agents (Claude subagents, parallel workflows) scale throughput; a *different* model scales judgment decorrelation. The two axes don't substitute for each other, so this skill stays deliberately narrow — one CLI, read-only, one review seam
+- Two invocation families that are mutually exclusive per a codex-cli constraint (≥ 0.142): **scoped** (default branch-vs-base, `--uncommitted`, `--base <branch>`, `--commit <sha>`) uses Codex's built-in review instructions and takes no custom prompt; **prompt-driven** (a bare prompt string) reviews the working tree with no scope flag. `-m/--model` combines with either
+- Read-only invariant enforced in the wrapper script itself via a flag allowlist (`exit 64` on anything else — e.g. a future `--write` or a `-c` config override), not assumed of the Codex CLI
+- Fold-don't-dump: Codex's stdout is untrusted input to a review decision the calling agent owns, not a verdict to relay verbatim — verify each finding, drop what's disproven, keep what's confirmed, treat a confirmed critical as a stop signal
+- Canonical copy lives in the author's Claude Code harness; this repo is a one-way mirror via `scripts/sync-from-local.sh`
+
+## Standard reference
+
+- [Agent Skill specification](https://agentskills.io/specification): the skill format used by this repo
+- [OpenAI Codex CLI](https://github.com/openai/codex): the external CLI this skill wraps (`codex review`)
+
+## Sibling concerns
+
+- Same-model throughput and parallel fan-out are out of scope here — use your harness's own subagent/workflow orchestration for that; this skill covers only the cross-model judgment seam

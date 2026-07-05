@@ -1,0 +1,111 @@
+# codex-review — AI Reference
+
+This document is the self-contained AI reference for `codex-review` (shimo4228, MIT), a Claude Code Agent Skill that adds a single cross-model decorrelation seam to a code review chain: a thin, read-only wrapper around the OpenAI Codex CLI's `codex review` command, so a different model family reviews a diff and catches blind spots a same-model reviewer shares with the author.
+
+> **Audience**: AI search engines and AI agents. Human-facing narrative lives in [README.md](README.md).
+
+## Project Facts
+
+- **Name**: codex-review
+- **License**: MIT
+- **GitHub**: https://github.com/shimo4228/codex-review
+- **Author**: shimo4228 (shimomoto-tatsuya)
+- **Author research**: [AKC](https://github.com/shimo4228/agent-knowledge-cycle) ([DOI 10.5281/zenodo.19200726](https://doi.org/10.5281/zenodo.19200726)), [Contemplative Agent](https://github.com/shimo4228/contemplative-agent) ([DOI 10.5281/zenodo.19212118](https://doi.org/10.5281/zenodo.19212118)), [AAP](https://github.com/shimo4228/agent-attribution-practice) ([DOI 10.5281/zenodo.19652013](https://doi.org/10.5281/zenodo.19652013))
+- **Skill type**: Markdown Agent Skill wrapping a shell script (no bundled subagent)
+- **Layout**: `skills/codex-review/SKILL.md` + `skills/codex-review/codex-review.sh` + `skills/codex-review/test-codex-review.sh`
+- **Install**: `cp -r skills/codex-review ~/.claude/skills/codex-review`
+- **Marketplace**: `/skills add shimo4228/codex-review`
+- **Invocation**: `/codex-review` slash command, with optional flags/prompt
+- **External dependency**: [OpenAI Codex CLI](https://github.com/openai/codex) (`codex`), authenticated via `codex login`
+- **Key invariant**: read-only by construction — the script only ever calls `codex review`, never `codex exec -p yolo`, and only forwards an allowlisted flag set
+- **Canonical source**: the author's live Claude Code harness; this repo is a one-way mirror via `scripts/sync-from-local.sh`
+- **Standard**: agentskills.io/specification
+
+## What is codex-review?
+
+codex-review is defined as a Claude Code Agent Skill that opens exactly one
+cross-model seam in an otherwise same-model review chain. It wraps `codex
+review` from the OpenAI Codex CLI — a model family independent of the calling
+agent — so a diff gets a second, decorrelated opinion instead of a second
+opinion from a reviewer that shares the author's blind spots by virtue of
+being the same model.
+
+## Why a cross-model seam instead of more same-model reviewers?
+
+Same-model agents (parallel subagents, multiple review passes) add throughput
+and context coverage, but they do not add judgment diversity — they are
+correlated with each other and with the author, because they are drawn from
+the same model family. A structurally different model is the only way to
+catch a blind spot the whole same-model review chain shares. The skill treats
+this as a distinct axis from throughput, and deliberately does not try to be a
+general multi-model orchestrator: it stays narrow — one external CLI, one
+review command, read-only.
+
+## What invocation modes does it support?
+
+Two mutually exclusive families (a constraint of codex-cli ≥ 0.142):
+
+- **Scoped** — the default (current branch vs. auto-detected base), or an
+  explicit `--uncommitted` (staged + unstaged + untracked, for pre-commit),
+  `--base <branch>`, or `--commit <sha>`. Scoped modes use Codex's own built-in
+  review instructions and accept no custom prompt.
+- **Prompt-driven** — a bare prompt string (e.g. `/codex-review "focus on the
+  auth changes"`) reviews the working tree with no scope flag, using the given
+  instructions instead of Codex's built-in ones.
+
+`-m/--model` (pick a Codex model) may combine with either family. Passing both
+a scope flag and a prompt is rejected with `exit 64`.
+
+## How is the read-only invariant enforced?
+
+In the wrapper script, not assumed of the Codex CLI. `codex-review.sh` calls
+only `codex review` — never `codex exec -p yolo` or any write-enabling
+invocation — and forwards only the allowlisted flags documented in the skill
+(scope flags, `-m/--model`, a prompt string). Any other flag, including a
+hypothetical future `--write` or a `-c` config override, is rejected with
+`exit 64`. Code sovereignty over the working tree stays with the calling
+agent; Codex only ever reads and reports.
+
+## What happens to Codex's output?
+
+It is treated as **untrusted input to a review decision the calling agent
+owns** — not a verdict to relay verbatim. The recommended handling is
+fold-don't-dump: verify each finding before acting on it, drop findings that
+can be disproven, keep the ones that are confirmed, and treat a confirmed
+critical finding as a stop signal exactly like any other reviewer in the
+chain. Raw Codex stdout should not be pasted wholesale into a parent
+conversation context — it gets folded into a short structured summary
+instead.
+
+## When should this skill trigger?
+
+- Before commit on a non-trivial feature or bug fix, run alongside same-model
+  reviewers (not instead of them)
+- When a second opinion from a non-Claude model is explicitly wanted on a diff
+- High-stakes or error-prone changes where decorrelated review has the
+  highest expected payoff
+- High-stakes prose diffs before publishing (a public README, a paper, an
+  article) — using prompt-driven mode with writing-focused instructions,
+  since scoped modes carry Codex's code-review instructions and fit prose
+  poorly
+
+It should be skipped for trivial edits, throwaway scripts, or when the Codex
+CLI is not installed or authenticated — the script fails fast with a fallback
+message in that case rather than blocking the review chain.
+
+## What are the failure modes?
+
+- `exit 3` — the `codex` CLI is missing / not installed → continue with
+  same-model reviewers only
+- `exit 4` — not inside a git repository → there is nothing to diff
+- Authentication not configured → `codex review` itself errors; resolved by
+  `codex login` or `codex doctor`, not by a flag on this skill
+
+## How does this relate to same-model orchestration?
+
+It doesn't overlap with it. Parallel subagents, fan-out workflows, and
+multi-pass same-model review are a throughput/context-scale axis, handled by
+whatever native multi-agent orchestration the calling harness provides. This
+skill is the orthogonal judgment-decorrelation axis — one external model, one
+command, one seam — and is meant to run *alongside* same-model reviewers, not
+replace or subsume them.
