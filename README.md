@@ -1,6 +1,6 @@
 # codex-review
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/shimo4228/codex-review) [![GitMCP](https://img.shields.io/endpoint?url=https://gitmcp.io/badge/shimo4228/codex-review)](https://gitmcp.io/shimo4228/codex-review)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/shimo4228/codex-review)
 
 An [Agent Skill](https://agentskills.io/specification) that adds **one cross-model seam** to a code review chain: a thin, read-only wrapper around the [OpenAI Codex CLI](https://github.com/openai/codex) (`codex review`) so a *different model family* reviews your diff and catches blind spots that an author and a same-model reviewer share.
 
