@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-08-22
+
+### Added
+
+- `skills/codex-review/codex-plan-challenge.sh` — plan-stage premise challenge: hands a design packet to `codex exec --sandbox read-only --ephemeral --ignore-user-config --ignore-rules -c approval_policy="never"` and asks for `REFUTE` / `MISSING` / `ALTERNATIVE` findings plus one `VERDICT:` line. Decorrelates divergence only; the design itself stays with the calling session.
+- `skills/codex-review/test-codex-plan-challenge.sh` — test suite for the plan script (flag allowlist, pinned read-only argv, prompt assembly).
+
+### Fixed
+
+- **Security.** `codex review` has no `--sandbox` flag and inherited `~/.codex/config.toml` — `sandbox_mode = "workspace-write"`, `approvals_reviewer = "auto_review"`, and execpolicy `.rules` pre-approving `git push` made the "read-only" review writable in practice. `codex-review.sh` now always pins `-c sandbox_mode="read-only" -c approval_policy="never"`; the argv allowlist guards one face, these pins guard the other.
+
 ## [1.0.0] — 2026-07-05
 
 Initial release as a standalone skill repository.

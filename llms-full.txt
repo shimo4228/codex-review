@@ -12,12 +12,12 @@ This document is the self-contained AI reference for `codex-review` (shimo4228, 
 - **Author**: shimo4228 (shimomoto-tatsuya)
 - **Author research**: [AKC](https://github.com/shimo4228/agent-knowledge-cycle) ([DOI 10.5281/zenodo.19200726](https://doi.org/10.5281/zenodo.19200726)), [Contemplative Agent](https://github.com/shimo4228/contemplative-agent) ([DOI 10.5281/zenodo.19212118](https://doi.org/10.5281/zenodo.19212118)), [AAP](https://github.com/shimo4228/agent-attribution-practice) ([DOI 10.5281/zenodo.19652013](https://doi.org/10.5281/zenodo.19652013))
 - **Skill type**: Markdown Agent Skill wrapping a shell script (no bundled subagent)
-- **Layout**: `skills/codex-review/SKILL.md` + `skills/codex-review/codex-review.sh` + `skills/codex-review/test-codex-review.sh`
+- **Layout**: `skills/codex-review/SKILL.md` + `codex-review.sh` (diff review) + `codex-plan-challenge.sh` (plan-stage premise challenge) + their `test-*.sh` suites
 - **Install**: `cp -r skills/codex-review ~/.claude/skills/codex-review`
 - **Marketplace**: `/skills add shimo4228/codex-review`
 - **Invocation**: `/codex-review` slash command, with optional flags/prompt
 - **External dependency**: [OpenAI Codex CLI](https://github.com/openai/codex) (`codex`), authenticated via `codex login`
-- **Key invariant**: read-only by construction — the script only ever calls `codex review`, never `codex exec -p yolo`, and only forwards an allowlisted flag set
+- **Key invariant**: read-only by construction on both faces — an allowlisted flag set guards argv, and the scripts pin the config face themselves (`-c sandbox_mode="read-only" -c approval_policy="never"`; plan mode also `--sandbox read-only --ephemeral --ignore-user-config --ignore-rules`), because `~/.codex/config.toml` and execpolicy `.rules` would otherwise make a "read-only" run writable
 - **Canonical source**: the author's live Claude Code harness; this repo is a one-way mirror via `scripts/sync-from-local.sh`
 - **Standard**: agentskills.io/specification
 
@@ -58,13 +58,37 @@ a scope flag and a prompt is rejected with `exit 64`.
 
 ## How is the read-only invariant enforced?
 
-In the wrapper script, not assumed of the Codex CLI. `codex-review.sh` calls
-only `codex review` — never `codex exec -p yolo` or any write-enabling
-invocation — and forwards only the allowlisted flags documented in the skill
-(scope flags, `-m/--model`, a prompt string). Any other flag, including a
-hypothetical future `--write` or a `-c` config override, is rejected with
-`exit 64`. Code sovereignty over the working tree stays with the calling
-agent; Codex only ever reads and reports.
+In the wrapper scripts, not assumed of the Codex CLI or of your config — and on
+two faces. **Argv face**: `codex-review.sh` calls only `codex review` — never
+`codex exec -p yolo` or any write-enabling invocation — and forwards only the
+allowlisted flags documented in the skill (scope flags, `-m/--model`, a prompt
+string). Any other flag, including a hypothetical future `--write` or a
+user-supplied `-c` override, is rejected with `exit 64`. **Config face**:
+`codex review` has no `--sandbox` flag and inherits `~/.codex/config.toml`;
+with `sandbox_mode = "workspace-write"`, `approvals_reviewer = "auto_review"`
+and execpolicy `.rules` pre-approving `git push`, a review run could write,
+escalate, and push. The script therefore always pins `-c
+sandbox_mode="read-only" -c approval_policy="never"` itself (the plan script
+pins `--sandbox read-only --ephemeral --ignore-user-config --ignore-rules -c
+approval_policy="never"`). Code sovereignty over the working tree stays with
+the calling agent; Codex only ever reads and reports.
+
+## What is the plan-stage premise challenge?
+
+The same decorrelation seam applied one step earlier, before a design is
+frozen. `codex-plan-challenge.sh --plan <packet.md>` hands Codex a design
+packet (premises / goal / chosen approach / rejected alternatives / expiry)
+and asks for exactly three kinds of findings — `REFUTE` (a premise
+contradicted by the code), `MISSING` (a constraint that would change the
+decision), `ALTERNATIVE` (a materially cheaper way, at most three lines) —
+plus one `VERDICT:` line (`premise-hole` / `alternative-exists` /
+`no-objection`). Codex reads the repository read-only to verify before
+asserting; it never designs and never scores. The rationale: a different
+model family is good at finding blind spots in premises (divergence) and bad
+as a co-author of the design (convergence). The calling session keeps design
+authority, adopts or discards findings one by one without blending them, and
+uses at most one outside voice per design — several competing designs with
+the main loop as arbiter would dissolve authorship.
 
 ## What happens to Codex's output?
 

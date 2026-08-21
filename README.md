@@ -46,10 +46,40 @@ Codex's built-in review instructions and takes no custom prompt; a bare prompt
 drives a working-tree review with no scope flag. `-m/--model` may accompany
 either.
 
-**Read-only by construction.** The script uses `codex review` (never `codex
-exec -p yolo`) and only forwards the allowlisted flags above — any other flag
-(a future `--write`, a `-c` config override) is rejected with `exit 64`. The
-invariant is enforced in the script, not assumed of the Codex CLI.
+**Read-only by construction, on both faces.** The script uses `codex review`
+(never `codex exec -p yolo`) and only forwards the allowlisted flags above — any
+other flag (a future `--write`, a user-supplied `-c` override) is rejected with
+`exit 64`. The argv allowlist alone is not enough, though: `codex review` has no
+`--sandbox` flag and inherits `~/.codex/config.toml`, where `sandbox_mode =
+"workspace-write"`, `approvals_reviewer = "auto_review"` and execpolicy `.rules`
+pre-approving `git push` would quietly turn a "read-only" review into a writing
+one. The script therefore always pins `-c sandbox_mode="read-only" -c
+approval_policy="never"` itself. The invariant is enforced in the script, not
+assumed of the Codex CLI or of your config.
+
+### Plan-stage premise challenge
+
+The same seam, one step earlier. Before a design is frozen, hand Codex the
+design packet (the plan file: premises / goal / chosen approach / rejected
+alternatives / expiry) and ask for **refutations, missing constraints, and
+cheaper alternatives — never a design**:
+
+```
+skills/codex-review/codex-plan-challenge.sh --plan <packet.md> [-m <model>] [--focus "<one line>"]
+```
+
+Codex runs as `codex exec --sandbox read-only --ephemeral --ignore-user-config
+--ignore-rules -c approval_policy="never"` with read-only access to the repo so
+it can check the packet's premises against the code. It returns `REFUTE` /
+`MISSING` / `ALTERNATIVE` findings and one `VERDICT:` line (`premise-hole` /
+`alternative-exists` / `no-objection`) — no scores, no blueprint.
+
+The point is to decorrelate **divergence only**: a different model family is
+good at finding the blind spots in your premises, and bad as a co-author of
+your design. Design authority (convergence) stays with the calling session;
+findings are adopted or discarded one by one, never blended. Keep it to one
+outside voice per design — once the main loop becomes an arbiter between
+several designs, authorship is gone.
 
 ## After Running — fold, don't dump
 

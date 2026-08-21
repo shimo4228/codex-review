@@ -1,6 +1,6 @@
 # codex-review
 
-> A Claude Code skill (MIT) that adds one cross-model decorrelation seam to a code review chain: a thin, read-only wrapper around the OpenAI Codex CLI (`codex review`) so a different model family reviews a diff and catches blind spots a same-model reviewer shares with the author.
+> A Claude Code skill (MIT) that adds one cross-model decorrelation seam to a code review chain: a thin, read-only wrapper around the OpenAI Codex CLI so a different model family reviews a diff (`codex review`) or challenges the premises of a design packet before implementation (`codex exec`, read-only), catching blind spots a same-model reviewer shares with the author.
 
 ## Core documentation
 
@@ -9,6 +9,8 @@
 - [SKILL.md](skills/codex-review/SKILL.md): full skill specification — scoped vs prompt-driven modes, read-only flag allowlist, fold-don't-dump handling of Codex output
 - [codex-review.sh](skills/codex-review/codex-review.sh): the wrapper script itself
 - [test-codex-review.sh](skills/codex-review/test-codex-review.sh): script test suite
+- [codex-plan-challenge.sh](skills/codex-review/codex-plan-challenge.sh): plan-stage premise challenge — hands a design packet to Codex (read-only, ephemeral, user config and rules ignored) and returns REFUTE / MISSING / ALTERNATIVE findings plus one VERDICT line; never a design
+- [test-codex-plan-challenge.sh](skills/codex-review/test-codex-plan-challenge.sh): test suite for the plan script
 
 ## Architecture
 
