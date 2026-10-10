@@ -1,6 +1,6 @@
 # codex-review
 
-> A Claude Code skill (MIT) that adds one cross-model decorrelation seam to a code review chain: a thin, read-only wrapper around the OpenAI Codex CLI so a different model family reviews a diff (`codex review`) or challenges the premises of a design packet before implementation (`codex exec`, read-only), catching blind spots a same-model reviewer shares with the author.
+> A Claude Code skill (MIT) that adds one cross-model decorrelation seam to a code review chain: a thin, read-only wrapper around the OpenAI Codex CLI so a different model family reviews a diff (`codex review`) or challenges the premises of a design packet before implementation (`codex exec`, read-only), catching blind spots a same-model reviewer shares with the author. Retired on 2026-09-27; this repo is a frozen record.
 
 ## Core documentation
 
@@ -16,9 +16,9 @@
 
 - One seam, not a general orchestrator: same-model agents (Claude subagents, parallel workflows) scale throughput; a *different* model scales judgment decorrelation. The two axes don't substitute for each other, so this skill stays deliberately narrow — one CLI, read-only, one review seam
 - Two invocation families that are mutually exclusive per a codex-cli constraint (≥ 0.142): **scoped** (default branch-vs-base, `--uncommitted`, `--base <branch>`, `--commit <sha>`) uses Codex's built-in review instructions and takes no custom prompt; **prompt-driven** (a bare prompt string) reviews the working tree with no scope flag. `-m/--model` combines with either
-- Read-only invariant enforced in the wrapper script itself via a flag allowlist (`exit 64` on anything else — e.g. a future `--write` or a `-c` config override), not assumed of the Codex CLI
+- Read-only invariant enforced in the wrapper script itself via a flag allowlist (`exit 64` on anything else — e.g. a future `--write` or a `-c` config override) and config pins (`-c sandbox_mode="read-only" -c approval_policy="never"`), not assumed of the Codex CLI
 - Fold-don't-dump: Codex's stdout is untrusted input to a review decision the calling agent owns, not a verdict to relay verbatim — verify each finding, drop what's disproven, keep what's confirmed, treat a confirmed critical as a stop signal
-- Canonical copy lives in the author's Claude Code harness; this repo is a one-way mirror via `scripts/sync-from-local.sh`
+- Retired from the author's Claude Code harness on 2026-09-27 (harness ADR-0084, replaced by OpenAI's official Codex plugin); this repo is a frozen record and `scripts/sync-from-local.sh` no longer has a source to sync from
 
 ## Standard reference
 
