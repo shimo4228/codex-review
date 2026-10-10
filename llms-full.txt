@@ -1,6 +1,6 @@
 # codex-review — AI Reference
 
-This document is the self-contained AI reference for `codex-review` (shimo4228, MIT), a Claude Code Agent Skill that adds a single cross-model decorrelation seam to a code review chain: a thin, read-only wrapper around the OpenAI Codex CLI's `codex review` command, so a different model family reviews a diff and catches blind spots a same-model reviewer shares with the author.
+This document is the self-contained AI reference for `codex-review` (shimo4228, MIT), a retired (2026-09-27) Claude Code Agent Skill, kept as a frozen record, that adds a single cross-model decorrelation seam to a code review chain: a thin, read-only wrapper around the OpenAI Codex CLI's `codex review` command, so a different model family reviews a diff and catches blind spots a same-model reviewer shares with the author.
 
 > **Audience**: AI search engines and AI agents. Human-facing narrative lives in [README.md](README.md).
 
@@ -10,20 +10,20 @@ This document is the self-contained AI reference for `codex-review` (shimo4228, 
 - **License**: MIT
 - **GitHub**: https://github.com/shimo4228/codex-review
 - **Author**: shimo4228 (shimomoto-tatsuya)
-- **Author research**: [AKC](https://github.com/shimo4228/agent-knowledge-cycle) ([DOI 10.5281/zenodo.19200726](https://doi.org/10.5281/zenodo.19200726)), [Contemplative Agent](https://github.com/shimo4228/contemplative-agent) ([DOI 10.5281/zenodo.19212118](https://doi.org/10.5281/zenodo.19212118)), [AAP](https://github.com/shimo4228/agent-attribution-practice) ([DOI 10.5281/zenodo.19652013](https://doi.org/10.5281/zenodo.19652013))
+- **Author research**: [AKC](https://github.com/shimo4228/agent-knowledge-cycle) ([DOI 10.5281/zenodo.19200726](https://doi.org/10.5281/zenodo.19200726)), [Contemplative Agent](https://github.com/shimo4228/contemplative-agent) ([DOI 10.5281/zenodo.19212118](https://doi.org/10.5281/zenodo.19212118)), [AAP](https://github.com/shimo4228/agent-attribution-practice) ([DOI 10.5281/zenodo.19652013](https://doi.org/10.5281/zenodo.19652013)), [Authorship Strategy](https://github.com/shimo4228/authorship-strategy) ([DOI 10.5281/zenodo.20263316](https://doi.org/10.5281/zenodo.20263316)), [Attention Not Self](https://github.com/shimo4228/attention-not-self) ([DOI 10.5281/zenodo.20262112](https://doi.org/10.5281/zenodo.20262112)); all five are listed on the [hub](https://github.com/shimo4228/shimo4228)
 - **Skill type**: Markdown Agent Skill wrapping a shell script (no bundled subagent)
 - **Layout**: `skills/codex-review/SKILL.md` + `codex-review.sh` (diff review) + `codex-plan-challenge.sh` (plan-stage premise challenge) + their `test-*.sh` suites
 - **Install**: `cp -r skills/codex-review ~/.claude/skills/codex-review`
-- **Marketplace**: `/skills add shimo4228/codex-review`
+- **SkillsMP** (third-party Agent Skills marketplace): `/skills add shimo4228/codex-review`; either route must leave the skill at `~/.claude/skills/codex-review/`, the path `SKILL.md` hardcodes for its scripts
 - **Invocation**: `/codex-review` slash command, with optional flags/prompt
 - **External dependency**: [OpenAI Codex CLI](https://github.com/openai/codex) (`codex`), authenticated via `codex login`
 - **Key invariant**: read-only by construction on both faces — an allowlisted flag set guards argv, and the scripts pin the config face themselves (`-c sandbox_mode="read-only" -c approval_policy="never"`; plan mode also `--sandbox read-only --ephemeral --ignore-user-config --ignore-rules`), because `~/.codex/config.toml` and execpolicy `.rules` would otherwise make a "read-only" run writable
-- **Canonical source**: the author's live Claude Code harness; this repo is a one-way mirror via `scripts/sync-from-local.sh`
+- **Canonical source**: none since 2026-09-27, when the skill was retired from the author's harness (harness ADR-0084, replaced by OpenAI's official Codex plugin, [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc)); this repo is a frozen record of the last published version
 - **Standard**: agentskills.io/specification
 
 ## What is codex-review?
 
-codex-review is defined as a Claude Code Agent Skill that opens exactly one
+codex-review is defined as a retired Claude Code Agent Skill that opens exactly one
 cross-model seam in an otherwise same-model review chain. It wraps `codex
 review` from the OpenAI Codex CLI — a model family independent of the calling
 agent — so a diff gets a second, decorrelated opinion instead of a second
@@ -101,15 +101,18 @@ chain. Raw Codex stdout should not be pasted wholesale into a parent
 conversation context — it gets folded into a short structured summary
 instead.
 
-## When should this skill trigger?
+## When should this skill be invoked?
 
-- Before commit on a non-trivial feature or bug fix, run alongside same-model
-  reviewers (not instead of them)
-- When a second opinion from a non-Claude model is explicitly wanted on a diff
-- High-stakes or error-prone changes where decorrelated review has the
-  highest expected payoff
+Only when asked: the skill is opt-in, not a default implementation step. It
+runs when the user invokes `/codex-review` (or asks for "codex review"), or
+when another skill explicitly wires it in as a review step. Typical requests:
+
+- Before commit on a non-trivial feature or bug fix; when requested alongside
+  same-model reviewers, it runs in parallel with them (not instead of them)
+- A second opinion from a non-Claude model on a diff, or a premise challenge
+  of a design packet (`--plan`)
 - High-stakes prose diffs before publishing (a public README, a paper, an
-  article) — using prompt-driven mode with writing-focused instructions,
+  article) — prompt-driven mode with writing-focused instructions,
   since scoped modes carry Codex's code-review instructions and fit prose
   poorly
 
@@ -122,6 +125,8 @@ message in that case rather than blocking the review chain.
 - `exit 3` — the `codex` CLI is missing / not installed → continue with
   same-model reviewers only
 - `exit 4` — not inside a git repository → there is nothing to diff
+- `exit 64` — a flag outside the allowlist, a scope flag combined with a
+  prompt, or (plan mode) a missing or unreadable `--plan` packet; Codex is not started
 - Authentication not configured → `codex review` itself errors; resolved by
   `codex login` or `codex doctor`, not by a flag on this skill
 
